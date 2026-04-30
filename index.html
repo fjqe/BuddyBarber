@@ -1,0 +1,1964 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Buddy Barber — The Simulator</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Mono:wght@400;500&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:        #0d0d0f;
+  --bg2:       #13131a;
+  --bg3:       #1a1a24;
+  --bg4:       #22222f;
+  --border:    #2a2a3a;
+  --border2:   #3a3a50;
+  --accent:    #c9a84c;
+  --accent2:   #e8c46a;
+  --accent3:   #f0d080;
+  --red:       #e05050;
+  --green:     #4caf7d;
+  --blue:      #5080e0;
+  --purple:    #9060d0;
+  --text:      #e8e8f0;
+  --text2:     #a0a0b8;
+  --text3:     #606078;
+  --shadow:    0 8px 32px rgba(0,0,0,0.6);
+  --glow:      0 0 20px rgba(201,168,76,0.3);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family:'Syne',sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  min-height:100vh;
+  overflow-x:hidden;
+}
+/* ─── NOISE OVERLAY ─── */
+body::before{
+  content:'';position:fixed;inset:0;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+  pointer-events:none;z-index:0;opacity:.5;
+}
+/* ─── SCREENS ─── */
+#screen-intro,#screen-game,#screen-gameover,#screen-prestige{
+  position:relative;z-index:1;
+}
+#screen-intro{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  min-height:100vh;padding:40px 20px;
+  background:radial-gradient(ellipse 80% 60% at 50% 30%, #1e1810 0%, var(--bg) 70%);
+}
+#screen-game{display:none;min-height:100vh;}
+#screen-gameover{
+  display:none;flex-direction:column;align-items:center;justify-content:center;
+  min-height:100vh;padding:40px;text-align:center;
+  background:radial-gradient(ellipse 80% 60% at 50% 30%, #1a0808 0%, var(--bg) 70%);
+}
+#screen-prestige{
+  display:none;flex-direction:column;align-items:center;justify-content:center;
+  min-height:100vh;padding:40px;text-align:center;
+  background:radial-gradient(ellipse 80% 60% at 50% 30%, #0d0d1e 0%, var(--bg) 70%);
+}
+
+/* ─── INTRO ─── */
+.intro-logo{
+  font-family:'Playfair Display',serif;
+  font-size:clamp(48px,8vw,96px);
+  font-weight:900;
+  color:var(--accent);
+  text-shadow:0 0 60px rgba(201,168,76,0.4),0 4px 0 #5a3a00;
+  letter-spacing:-2px;
+  line-height:1;
+  margin-bottom:8px;
+}
+.intro-sub{
+  font-family:'DM Mono',monospace;
+  color:var(--text2);
+  font-size:13px;
+  letter-spacing:4px;
+  text-transform:uppercase;
+  margin-bottom:48px;
+}
+.scissors-deco{
+  font-size:48px;
+  animation:snip 2s ease-in-out infinite;
+  display:block;margin-bottom:24px;
+}
+@keyframes snip{
+  0%,100%{transform:rotate(-10deg) scale(1);}
+  50%{transform:rotate(10deg) scale(1.1);}
+}
+.intro-desc{
+  max-width:520px;text-align:center;
+  color:var(--text2);font-size:15px;line-height:1.7;
+  margin-bottom:40px;
+}
+.name-section{
+  display:flex;flex-direction:column;align-items:center;gap:12px;margin-bottom:32px;
+}
+.name-section label{
+  font-size:12px;letter-spacing:3px;text-transform:uppercase;color:var(--text3);
+}
+.name-section input{
+  background:var(--bg3);border:1px solid var(--border2);
+  color:var(--text);font-family:'Syne',sans-serif;font-size:18px;
+  padding:12px 24px;border-radius:4px;width:280px;text-align:center;
+  outline:none;transition:border-color .2s,box-shadow .2s;
+}
+.name-section input:focus{border-color:var(--accent);box-shadow:var(--glow);}
+.btn{
+  font-family:'Syne',sans-serif;font-weight:800;letter-spacing:2px;
+  text-transform:uppercase;font-size:13px;
+  padding:14px 40px;border:none;border-radius:4px;
+  cursor:pointer;transition:all .2s;position:relative;overflow:hidden;
+}
+.btn::after{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(135deg,rgba(255,255,255,0.1) 0%,transparent 60%);
+  pointer-events:none;
+}
+.btn-gold{
+  background:linear-gradient(135deg,#c9a84c,#8a6a20);
+  color:#0d0800;box-shadow:0 4px 20px rgba(201,168,76,0.35);
+}
+.btn-gold:hover{transform:translateY(-2px);box-shadow:0 8px 30px rgba(201,168,76,0.5);}
+.btn-gold:active{transform:translateY(0);}
+.btn-red{background:linear-gradient(135deg,#c03030,#801010);color:#fff;}
+.btn-red:hover{transform:translateY(-2px);box-shadow:0 8px 30px rgba(200,50,50,0.4);}
+.btn-blue{background:linear-gradient(135deg,#3060c0,#102080);color:#fff;}
+.btn-blue:hover{transform:translateY(-2px);}
+.btn-sm{padding:8px 20px;font-size:11px;}
+.btn-ghost{
+  background:transparent;border:1px solid var(--border2);color:var(--text2);
+}
+.btn-ghost:hover{border-color:var(--accent);color:var(--accent);}
+
+/* ─── GAME LAYOUT ─── */
+.game-header{
+  background:var(--bg2);border-bottom:1px solid var(--border);
+  padding:12px 24px;
+  display:flex;align-items:center;justify-content:space-between;
+  flex-wrap:wrap;gap:8px;
+  position:sticky;top:0;z-index:100;
+}
+.header-brand{
+  font-family:'Playfair Display',serif;
+  font-size:22px;font-weight:900;color:var(--accent);
+}
+.header-stats{display:flex;gap:20px;align-items:center;flex-wrap:wrap;}
+.hstat{display:flex;flex-direction:column;align-items:center;}
+.hstat-label{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--text3);}
+.hstat-val{font-family:'DM Mono',monospace;font-size:15px;font-weight:500;color:var(--accent2);}
+.hstat-val.rep{color:var(--green);}
+.hstat-val.day{color:var(--blue);}
+.hstat-val.prestige{color:var(--purple);}
+
+.game-body{
+  display:grid;
+  grid-template-columns:260px 1fr 280px;
+  grid-template-rows:auto;
+  gap:0;
+  min-height:calc(100vh - 60px);
+}
+@media(max-width:900px){
+  .game-body{grid-template-columns:1fr;grid-template-rows:auto;}
+}
+
+/* ─── PANELS ─── */
+.panel{
+  background:var(--bg2);border-right:1px solid var(--border);
+  padding:20px;overflow-y:auto;
+}
+.panel-title{
+  font-size:10px;letter-spacing:3px;text-transform:uppercase;
+  color:var(--text3);margin-bottom:16px;padding-bottom:10px;
+  border-bottom:1px solid var(--border);
+}
+.panel-right{border-right:none;border-left:1px solid var(--border);}
+
+/* ─── CENTER / BARBERSHOP ─── */
+.shop-area{
+  padding:24px;display:flex;flex-direction:column;gap:20px;
+}
+
+/* ─── CUSTOMER CARD ─── */
+.customer-card{
+  background:var(--bg3);border:1px solid var(--border);border-radius:8px;
+  padding:20px;position:relative;overflow:hidden;
+  transition:all .3s;
+}
+.customer-card::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:3px;
+  background:linear-gradient(90deg,var(--accent),var(--accent2));
+}
+.customer-card.vip::before{background:linear-gradient(90deg,var(--purple),#c080ff);}
+.customer-card.angry::before{background:linear-gradient(90deg,var(--red),#ff8080);}
+.customer-card.empty{
+  border-style:dashed;opacity:.5;
+  display:flex;align-items:center;justify-content:center;
+  min-height:160px;color:var(--text3);font-size:14px;
+}
+.cust-header{display:flex;align-items:center;gap:14px;margin-bottom:14px;}
+.cust-avatar{
+  width:56px;height:56px;border-radius:50%;
+  background:var(--bg4);border:2px solid var(--border2);
+  display:flex;align-items:center;justify-content:center;
+  font-size:28px;flex-shrink:0;
+}
+.cust-info h3{font-size:17px;font-weight:800;margin-bottom:2px;}
+.cust-info .cust-type{
+  font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--text3);
+}
+.cust-tag{
+  display:inline-block;padding:2px 8px;border-radius:2px;
+  font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;
+  margin-left:6px;
+}
+.tag-vip{background:rgba(144,96,208,.25);color:#c080ff;border:1px solid rgba(144,96,208,.4);}
+.tag-angry{background:rgba(224,80,80,.2);color:var(--red);border:1px solid rgba(224,80,80,.35);}
+.tag-loyal{background:rgba(76,175,125,.2);color:var(--green);border:1px solid rgba(76,175,125,.35);}
+.tag-new{background:rgba(80,128,224,.2);color:#80a0ff;border:1px solid rgba(80,128,224,.35);}
+
+.cust-request{
+  font-size:13px;color:var(--text2);margin-bottom:14px;
+  padding:10px 14px;background:var(--bg4);border-radius:4px;
+  border-left:3px solid var(--accent);font-style:italic;
+}
+.patience-bar{margin-bottom:14px;}
+.patience-bar-label{
+  display:flex;justify-content:space-between;
+  font-size:10px;color:var(--text3);margin-bottom:4px;
+  letter-spacing:1px;text-transform:uppercase;
+}
+.bar-track{height:6px;background:var(--bg4);border-radius:3px;overflow:hidden;}
+.bar-fill{height:100%;border-radius:3px;transition:width .5s,background .3s;}
+.bar-patience{background:linear-gradient(90deg,var(--green),var(--accent2));}
+.bar-patience.low{background:linear-gradient(90deg,var(--red),#ff8040);}
+.bar-skill{background:linear-gradient(90deg,var(--blue),var(--purple));}
+.bar-xp{background:linear-gradient(90deg,var(--accent),var(--accent2));}
+
+.service-grid{
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;
+  margin-bottom:14px;
+}
+.service-btn{
+  background:var(--bg4);border:1px solid var(--border);border-radius:6px;
+  padding:10px 8px;cursor:pointer;text-align:center;
+  transition:all .18s;color:var(--text);font-family:'Syne',sans-serif;
+  font-size:12px;font-weight:600;
+}
+.service-btn:hover:not(:disabled){
+  border-color:var(--accent);background:rgba(201,168,76,.1);
+  transform:translateY(-2px);box-shadow:var(--glow);
+}
+.service-btn:disabled{opacity:.35;cursor:not-allowed;}
+.service-btn .svc-icon{font-size:22px;display:block;margin-bottom:4px;}
+.service-btn .svc-price{
+  font-family:'DM Mono',monospace;font-size:11px;
+  color:var(--green);margin-top:2px;
+}
+.service-btn .svc-time{font-size:10px;color:var(--text3);}
+
+/* ─── MINIGAME ─── */
+.minigame-wrap{
+  background:var(--bg3);border:1px solid var(--border);border-radius:8px;
+  padding:20px;text-align:center;
+}
+.minigame-title{
+  font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--text3);
+  margin-bottom:14px;
+}
+.precision-track{
+  width:100%;height:40px;background:var(--bg4);border-radius:6px;
+  position:relative;overflow:hidden;cursor:pointer;margin-bottom:12px;
+  border:1px solid var(--border);
+}
+.precision-zone{
+  position:absolute;top:0;height:100%;
+  background:rgba(76,175,125,.3);border:1px solid var(--green);
+  border-radius:4px;transition:width .1s;
+}
+.precision-cursor{
+  position:absolute;top:0;bottom:0;width:3px;
+  background:var(--accent2);border-radius:2px;
+  box-shadow:0 0 10px var(--accent);
+  animation:slide var(--slide-speed,1.2s) linear infinite alternate;
+}
+@keyframes slide{from{left:0%}to{left:calc(100% - 3px)}}
+.precision-result{
+  font-family:'DM Mono',monospace;font-size:22px;font-weight:500;
+  min-height:30px;margin-bottom:8px;
+}
+.result-perfect{color:var(--accent2);text-shadow:0 0 20px var(--accent);}
+.result-great{color:var(--green);}
+.result-ok{color:var(--blue);}
+.result-miss{color:var(--red);}
+
+/* ─── QUEUE / LEFT PANEL ─── */
+.queue-item{
+  background:var(--bg3);border:1px solid var(--border);border-radius:6px;
+  padding:10px 12px;margin-bottom:8px;
+  display:flex;align-items:center;gap:10px;
+  cursor:default;transition:all .15s;
+}
+.queue-item:hover{border-color:var(--border2);}
+.queue-avatar{font-size:22px;}
+.queue-info{flex:1;min-width:0;}
+.queue-name{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.queue-patience{font-size:10px;color:var(--text3);}
+.queue-pos{
+  font-family:'DM Mono',monospace;font-size:11px;
+  color:var(--text3);
+}
+
+/* ─── SHOP UPGRADES / RIGHT PANEL ─── */
+.upgrade-item{
+  background:var(--bg3);border:1px solid var(--border);border-radius:6px;
+  padding:12px;margin-bottom:10px;transition:all .18s;
+}
+.upgrade-item:hover{border-color:var(--border2);}
+.upgrade-item.can-afford:hover{
+  border-color:var(--accent);background:rgba(201,168,76,.06);
+}
+.upgrade-item.maxed{opacity:.5;}
+.upgrade-header{display:flex;align-items:center;gap:10px;margin-bottom:6px;}
+.upgrade-icon{font-size:20px;}
+.upgrade-name{font-size:13px;font-weight:700;flex:1;}
+.upgrade-level{
+  font-family:'DM Mono',monospace;font-size:11px;
+  color:var(--text3);white-space:nowrap;
+}
+.upgrade-desc{font-size:11px;color:var(--text2);margin-bottom:8px;line-height:1.5;}
+.upgrade-footer{display:flex;align-items:center;justify-content:space-between;}
+.upgrade-cost{
+  font-family:'DM Mono',monospace;font-size:13px;
+  color:var(--accent2);font-weight:500;
+}
+.upgrade-cost.cant{color:var(--text3);}
+
+/* ─── SKILLS / TALENT TREE ─── */
+.skill-node{
+  background:var(--bg3);border:2px solid var(--border);border-radius:8px;
+  padding:12px;margin-bottom:8px;cursor:pointer;transition:all .2s;
+}
+.skill-node:hover:not(.locked){
+  border-color:var(--accent);background:rgba(201,168,76,.08);
+}
+.skill-node.unlocked{border-color:var(--green);background:rgba(76,175,125,.08);}
+.skill-node.locked{opacity:.45;cursor:not-allowed;}
+.skill-node .sn-header{display:flex;gap:8px;align-items:center;margin-bottom:4px;}
+.skill-node .sn-icon{font-size:18px;}
+.skill-node .sn-name{font-size:13px;font-weight:700;}
+.skill-node .sn-cost{
+  font-family:'DM Mono',monospace;font-size:11px;
+  color:var(--purple);margin-left:auto;
+}
+.skill-node .sn-desc{font-size:11px;color:var(--text2);}
+
+/* ─── TABS ─── */
+.tabs{display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:16px;}
+.tab{
+  padding:8px 14px;font-size:11px;font-weight:600;letter-spacing:1px;
+  text-transform:uppercase;cursor:pointer;color:var(--text3);
+  border-bottom:2px solid transparent;transition:all .15s;
+  white-space:nowrap;
+}
+.tab:hover{color:var(--text2);}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent);}
+
+/* ─── EVENTS / LOG ─── */
+.event-log{
+  height:180px;overflow-y:auto;
+  background:var(--bg4);border-radius:6px;padding:10px;
+  font-family:'DM Mono',monospace;font-size:11px;
+  border:1px solid var(--border);
+}
+.log-entry{
+  padding:3px 0;border-bottom:1px solid rgba(255,255,255,.04);
+  line-height:1.5;
+}
+.log-entry:last-child{border-bottom:none;}
+.log-time{color:var(--text3);margin-right:6px;}
+.log-gold{color:var(--accent2);}
+.log-green{color:var(--green);}
+.log-red{color:var(--red);}
+.log-blue{color:#80a0ff;}
+.log-purple{color:#c080ff;}
+
+/* ─── DAILY REPORT ─── */
+.daily-report{
+  background:var(--bg3);border:1px solid var(--border);border-radius:8px;
+  padding:20px;margin-bottom:16px;
+}
+.report-row{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:6px 0;border-bottom:1px solid rgba(255,255,255,.04);
+  font-size:13px;
+}
+.report-row:last-child{border-bottom:none;}
+.report-val{font-family:'DM Mono',monospace;font-weight:500;color:var(--accent2);}
+
+/* ─── EVENTS PANEL ─── */
+.event-card{
+  background:var(--bg3);border:1px solid var(--border);border-radius:8px;
+  padding:16px;margin-bottom:12px;border-left:3px solid var(--accent);
+  animation:slideIn .3s ease;
+}
+@keyframes slideIn{from{transform:translateX(-10px);opacity:0}to{transform:none;opacity:1}}
+.event-card.bad{border-left-color:var(--red);}
+.event-card.good{border-left-color:var(--green);}
+.event-card.special{border-left-color:var(--purple);}
+.event-title{font-size:13px;font-weight:700;margin-bottom:4px;}
+.event-desc{font-size:12px;color:var(--text2);margin-bottom:10px;line-height:1.5;}
+
+/* ─── ACHIEVEMENTS ─── */
+.achievement{
+  background:var(--bg3);border:1px solid var(--border);border-radius:6px;
+  padding:12px;margin-bottom:8px;
+  display:flex;gap:12px;align-items:center;
+}
+.achievement.earned{border-color:var(--accent);background:rgba(201,168,76,.07);}
+.achievement.locked{opacity:.4;}
+.ach-icon{font-size:24px;flex-shrink:0;}
+.ach-info{flex:1;}
+.ach-name{font-size:13px;font-weight:700;margin-bottom:2px;}
+.ach-desc{font-size:11px;color:var(--text2);}
+.ach-badge{
+  font-size:10px;letter-spacing:1px;text-transform:uppercase;
+  color:var(--accent);font-weight:600;
+}
+
+/* ─── REPUTATION STARS ─── */
+.rep-stars{display:flex;gap:3px;margin-bottom:4px;}
+.star{font-size:14px;transition:color .2s;}
+.star.filled{color:var(--accent2);}
+.star.empty{color:var(--bg4);}
+
+/* ─── TOAST NOTIFICATIONS ─── */
+#toast-container{
+  position:fixed;bottom:24px;right:24px;z-index:9999;
+  display:flex;flex-direction:column-reverse;gap:8px;pointer-events:none;
+}
+.toast{
+  background:var(--bg3);border:1px solid var(--border2);
+  border-radius:6px;padding:12px 18px;
+  font-size:13px;font-weight:600;
+  box-shadow:var(--shadow);
+  animation:toastIn .3s ease,toastOut .3s ease 2.5s forwards;
+  max-width:280px;
+}
+.toast.good{border-left:3px solid var(--green);color:var(--green);}
+.toast.gold{border-left:3px solid var(--accent);color:var(--accent2);}
+.toast.bad{border-left:3px solid var(--red);color:var(--red);}
+.toast.special{border-left:3px solid var(--purple);color:#c080ff;}
+@keyframes toastIn{from{transform:translateX(20px);opacity:0}to{transform:none;opacity:1}}
+@keyframes toastOut{from{opacity:1}to{opacity:0;transform:translateX(20px)}}
+
+/* ─── COMBO DISPLAY ─── */
+#combo-display{
+  position:fixed;top:80px;left:50%;transform:translateX(-50%);
+  font-family:'Playfair Display',serif;font-size:32px;font-weight:900;
+  color:var(--accent2);text-shadow:var(--glow);
+  pointer-events:none;z-index:9998;
+  opacity:0;transition:opacity .3s;
+}
+#combo-display.show{opacity:1;}
+
+/* ─── PRESTIGE ─── */
+.prestige-perk{
+  background:var(--bg3);border:1px solid var(--border);border-radius:8px;
+  padding:16px;margin:8px 0;text-align:left;
+  display:flex;gap:14px;align-items:flex-start;
+}
+.pp-icon{font-size:24px;}
+.pp-info h4{font-size:14px;font-weight:700;color:var(--accent2);margin-bottom:4px;}
+.pp-info p{font-size:12px;color:var(--text2);}
+
+/* ─── SCROLLBARS ─── */
+::-webkit-scrollbar{width:5px;}
+::-webkit-scrollbar-track{background:var(--bg2);}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
+
+/* ─── MISC ─── */
+.divider{height:1px;background:var(--border);margin:14px 0;}
+.money-big{
+  font-family:'Playfair Display',serif;font-size:36px;font-weight:900;
+  color:var(--accent2);text-align:center;
+  text-shadow:0 0 30px rgba(201,168,76,.4);
+}
+.label-row{
+  display:flex;justify-content:space-between;align-items:center;
+  font-size:11px;color:var(--text3);letter-spacing:1px;
+  text-transform:uppercase;margin-bottom:6px;
+}
+.hidden{display:none!important;}
+.flex-row{display:flex;gap:10px;flex-wrap:wrap;}
+.center{text-align:center;}
+h2{font-family:'Playfair Display',serif;font-size:28px;font-weight:900;color:var(--accent);}
+h3{font-size:16px;font-weight:700;}
+p{font-size:14px;color:var(--text2);line-height:1.6;}
+.spacer{height:20px;}
+.shop-section-title{
+  font-size:10px;letter-spacing:3px;text-transform:uppercase;
+  color:var(--text3);margin:16px 0 10px;padding-bottom:8px;
+  border-bottom:1px solid var(--border);
+}
+.time-display{
+  font-family:'DM Mono',monospace;font-size:12px;color:var(--text3);
+}
+.streak-badge{
+  display:inline-flex;align-items:center;gap:4px;
+  background:rgba(201,168,76,.15);border:1px solid rgba(201,168,76,.3);
+  border-radius:3px;padding:3px 8px;
+  font-size:11px;font-weight:700;color:var(--accent2);
+}
+.tip-display{
+  font-family:'DM Mono',monospace;font-size:13px;color:var(--green);
+}
+</style>
+</head>
+<body>
+
+<!-- TOAST CONTAINER -->
+<div id="toast-container"></div>
+<div id="combo-display"></div>
+
+<!-- ══════════════════ INTRO SCREEN ══════════════════ -->
+<div id="screen-intro">
+  <span class="scissors-deco">✂️</span>
+  <div class="intro-logo">Buddy Barber</div>
+  <div class="intro-sub">The Definitive Barbershop Simulator</div>
+  <p class="intro-desc">
+    Start with a pair of scissors and a dream. Build your reputation, hire staff,
+    unlock legendary cuts, and conquer the barbering world — one perfect fade at a time.
+    Hard progression. Real stakes. No hand-holding.
+  </p>
+  <div class="name-section">
+    <label>What's your barber name?</label>
+    <input type="text" id="barber-name-input" placeholder="e.g. Slick Eddie" maxlength="20">
+  </div>
+  <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin-bottom:32px;">
+    <button class="btn btn-gold" onclick="startGame()">Open the Shop ✂️</button>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;max-width:500px;width:100%;">
+    <div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:16px;text-align:center;">
+      <div style="font-size:24px;margin-bottom:6px;">💇</div>
+      <div style="font-size:12px;font-weight:600;margin-bottom:4px;">Serve Clients</div>
+      <div style="font-size:11px;color:var(--text3);">12+ service types with skill-based minigames</div>
+    </div>
+    <div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:16px;text-align:center;">
+      <div style="font-size:24px;margin-bottom:6px;">🏪</div>
+      <div style="font-size:12px;font-weight:600;margin-bottom:4px;">Upgrade Shop</div>
+      <div style="font-size:11px;color:var(--text3);">30+ upgrades, staff hiring, expansions</div>
+    </div>
+    <div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:16px;text-align:center;">
+      <div style="font-size:24px;margin-bottom:6px;">⭐</div>
+      <div style="font-size:12px;font-weight:600;margin-bottom:4px;">Prestige System</div>
+      <div style="font-size:11px;color:var(--text3);">Reset for permanent bonuses & titles</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════ GAME SCREEN ══════════════════ -->
+<div id="screen-game">
+  <!-- HEADER -->
+  <div class="game-header">
+    <div class="header-brand">✂ Buddy Barber</div>
+    <div class="header-stats">
+      <div class="hstat">
+        <span class="hstat-label">Cash</span>
+        <span class="hstat-val" id="hud-cash">$0</span>
+      </div>
+      <div class="hstat">
+        <span class="hstat-label">Day</span>
+        <span class="hstat-val day" id="hud-day">1</span>
+      </div>
+      <div class="hstat">
+        <span class="hstat-label">Rep</span>
+        <span class="hstat-val rep" id="hud-rep">0</span>
+      </div>
+      <div class="hstat">
+        <span class="hstat-label">Level</span>
+        <span class="hstat-val" id="hud-level">1</span>
+      </div>
+      <div class="hstat">
+        <span class="hstat-label">Prestige</span>
+        <span class="hstat-val prestige" id="hud-prestige">✦0</span>
+      </div>
+      <div class="hstat">
+        <span class="hstat-label">Streak</span>
+        <span class="hstat-val" id="hud-streak">0🔥</span>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <span class="time-display" id="hud-time">09:00</span>
+      <button class="btn btn-ghost btn-sm" onclick="endDay()">End Day →</button>
+    </div>
+  </div>
+
+  <!-- BODY -->
+  <div class="game-body">
+
+    <!-- LEFT: QUEUE + SKILLS -->
+    <div class="panel" id="left-panel">
+      <div class="tabs">
+        <div class="tab active" onclick="switchLeftTab('queue',this)">Queue</div>
+        <div class="tab" onclick="switchLeftTab('skills',this)">Skills</div>
+        <div class="tab" onclick="switchLeftTab('staff',this)">Staff</div>
+      </div>
+
+      <!-- QUEUE TAB -->
+      <div id="tab-queue">
+        <div class="panel-title">Waiting Room</div>
+        <div id="queue-list">
+          <div style="color:var(--text3);font-size:12px;">No customers yet...</div>
+        </div>
+        <div class="divider"></div>
+        <div style="font-size:11px;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;">Today's Stats</div>
+        <div class="report-row"><span>Served</span><span class="report-val" id="stat-served">0</span></div>
+        <div class="report-row"><span>Walked Out</span><span class="report-val" id="stat-walked">0</span></div>
+        <div class="report-row"><span>Today's Tips</span><span class="report-val" id="stat-tips">$0</span></div>
+        <div class="report-row"><span>Perfect Cuts</span><span class="report-val" id="stat-perfects">0</span></div>
+        <div class="report-row"><span>Combo Peak</span><span class="report-val" id="stat-combo">0</span></div>
+      </div>
+
+      <!-- SKILLS TAB -->
+      <div id="tab-skills" class="hidden">
+        <div class="panel-title">Skill Tree — <span id="sp-display" style="color:var(--purple)">0 SP</span></div>
+        <div id="skill-tree-list"></div>
+      </div>
+
+      <!-- STAFF TAB -->
+      <div id="tab-staff" class="hidden">
+        <div class="panel-title">Hired Staff</div>
+        <div id="staff-list">
+          <div style="color:var(--text3);font-size:12px;">No staff hired yet. Upgrade the shop!</div>
+        </div>
+        <div class="divider"></div>
+        <div class="panel-title">Hire Staff</div>
+        <div id="hire-list"></div>
+      </div>
+    </div>
+
+    <!-- CENTER: MAIN ACTION -->
+    <div class="shop-area" id="center-panel">
+      <!-- XP Bar -->
+      <div>
+        <div class="label-row">
+          <span>Level <span id="xp-level">1</span></span>
+          <span id="xp-text">0 / 100 XP</span>
+        </div>
+        <div class="bar-track"><div class="bar-fill bar-xp" id="xp-bar" style="width:0%"></div></div>
+      </div>
+
+      <!-- ACTIVE CUSTOMER -->
+      <div id="current-customer-wrap">
+        <div class="customer-card empty" id="empty-chair">
+          <div>
+            <div style="font-size:36px;margin-bottom:8px;">💈</div>
+            <div>No customer in chair</div>
+            <div style="font-size:11px;margin-top:4px;">Customers arrive automatically</div>
+          </div>
+        </div>
+        <div id="customer-card-real" class="hidden">
+          <div class="customer-card" id="active-customer-card">
+            <div class="cust-header">
+              <div class="cust-avatar" id="cust-avatar">😐</div>
+              <div class="cust-info">
+                <h3 id="cust-name">Customer</h3>
+                <div class="cust-type" id="cust-type-line">Regular</div>
+              </div>
+              <div>
+                <div id="cust-tags"></div>
+              </div>
+            </div>
+            <div class="cust-request" id="cust-request">"I'd like a trim please."</div>
+            <div class="patience-bar">
+              <div class="patience-bar-label">
+                <span>Patience</span><span id="patience-val">100%</span>
+              </div>
+              <div class="bar-track"><div class="bar-fill bar-patience" id="patience-bar-fill" style="width:100%"></div></div>
+            </div>
+            <div style="margin-bottom:12px;">
+              <div class="label-row">
+                <span>Tip Potential</span>
+                <span class="tip-display" id="tip-preview">$0</span>
+              </div>
+            </div>
+            <!-- SERVICE BUTTONS -->
+            <div class="service-grid" id="service-grid"></div>
+            <!-- ACTIVE MINIGAME -->
+            <div id="minigame-wrap" class="hidden">
+              <div class="minigame-wrap">
+                <div class="minigame-title" id="minigame-title">PRECISION CUT</div>
+                <div class="precision-track" id="precision-track" onclick="miniGameClick()">
+                  <div class="precision-zone" id="precision-zone"></div>
+                  <div class="precision-cursor" id="precision-cursor"></div>
+                </div>
+                <div class="precision-result" id="precision-result"></div>
+                <div style="font-size:11px;color:var(--text3);">Click when the cursor is in the green zone!</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- EVENT LOG -->
+      <div>
+        <div class="label-row"><span>Event Log</span><span style="color:var(--text3)">Today</span></div>
+        <div class="event-log" id="event-log"></div>
+      </div>
+
+      <!-- RANDOM EVENTS -->
+      <div id="random-events-area"></div>
+    </div>
+
+    <!-- RIGHT: SHOP + ACHIEVEMENTS -->
+    <div class="panel panel-right" id="right-panel">
+      <div class="tabs">
+        <div class="tab active" onclick="switchRightTab('shop',this)">Shop</div>
+        <div class="tab" onclick="switchRightTab('ach',this)">Achieve</div>
+        <div class="tab" onclick="switchRightTab('stats',this)">Stats</div>
+        <div class="tab" onclick="switchRightTab('market',this)">Market</div>
+      </div>
+
+      <!-- SHOP TAB -->
+      <div id="tab-shop">
+        <div class="panel-title">Upgrades & Expansions</div>
+        <div id="upgrade-list"></div>
+      </div>
+
+      <!-- ACHIEVEMENTS TAB -->
+      <div id="tab-ach" class="hidden">
+        <div class="panel-title">Achievements — <span id="ach-count">0/0</span></div>
+        <div id="ach-list"></div>
+      </div>
+
+      <!-- STATS TAB -->
+      <div id="tab-stats" class="hidden">
+        <div class="panel-title">Career Stats</div>
+        <div id="career-stats-list"></div>
+      </div>
+
+      <!-- MARKET TAB -->
+      <div id="tab-market" class="hidden">
+        <div class="panel-title">Black Market & Supplies</div>
+        <div id="market-list"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════ GAME OVER SCREEN ══════════════════ -->
+<div id="screen-gameover">
+  <div style="font-size:64px;margin-bottom:20px;">💈</div>
+  <h2 style="margin-bottom:12px;">Shop Closed</h2>
+  <p id="gameover-msg" style="margin-bottom:32px;max-width:400px;"></p>
+  <div id="gameover-stats" class="daily-report" style="max-width:400px;width:100%;text-align:left;margin-bottom:24px;"></div>
+  <div style="display:flex;gap:12px;justify-content:center;">
+    <button class="btn btn-gold" onclick="restartGame()">Try Again ✂️</button>
+    <button class="btn btn-ghost" onclick="prestigeCheck()">Prestige ✦</button>
+  </div>
+</div>
+
+<!-- ══════════════════ PRESTIGE SCREEN ══════════════════ -->
+<div id="screen-prestige">
+  <div style="font-size:64px;margin-bottom:20px;">✦</div>
+  <h2 style="margin-bottom:12px;color:var(--purple);">Prestige Reset</h2>
+  <p style="margin-bottom:24px;max-width:440px;">Reset your shop and progress in exchange for permanent bonuses that stack across all future runs. Your legend grows.</p>
+  <div style="max-width:440px;width:100%;margin-bottom:24px;" id="prestige-perks-wrap"></div>
+  <div style="display:flex;gap:12px;justify-content:center;">
+    <button class="btn btn-gold" id="prestige-confirm-btn" onclick="doPrestige()">✦ Prestige Now</button>
+    <button class="btn btn-ghost" onclick="cancelPrestige()">Not Yet</button>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+//  GAME STATE
+// ═══════════════════════════════════════════════════════════════
+const G = {
+  barberName:'Buddy',
+  cash:0, day:1, rep:0, xp:0, level:1,
+  skillPoints:0, prestige:0,
+  combo:0, peakCombo:0,
+  totalEarned:0, totalServed:0, totalWalked:0,
+  totalTips:0, totalPerfects:0, totalDays:0,
+  todayEarned:0, todayServed:0, todayWalked:0,
+  todayTips:0, todayPerfects:0,
+  gameTime:540, // minutes since midnight, start 9am
+  shopOpen:true,
+  activeCustomer:null,
+  queue:[],
+  maxQueue:4,
+  staff:[],
+  unlockedSkills:[],
+  completedAchievements:[],
+  marketBought:{},
+  prestigePerks:[],
+  // Upgrade levels
+  upgrades:{},
+  // modifiers
+  mod:{
+    priceMulti:1, tipMulti:1, patienceBonus:0, speedMulti:1,
+    xpMulti:1, repMulti:1, queueSize:0, staffSlots:1,
+    minigameEasy:0, freeService:0, vipChance:0, eventChance:1,
+  },
+  flags:{
+    premiumProducts:false, mirrorInstalled:false, musicPlaying:false,
+    coffeeStation:false, wifiAvailable:false, luxuryChair:false,
+    neonSign:false, barbersPolePremium:false, trainingDummies:false,
+    onlineBooking:false, loyaltyCards:false, streetAds:false,
+    premiumLocation:false, franchiseReady:false,
+  }
+};
+
+let customerTimer=null, patienceTimer=null, spawnTimer=null;
+let minigameActive=false, minigameSvc=null;
+let logLines=[], activeEvents=[];
+
+// ═══════════════════════════════════════════════════════════════
+//  DATA TABLES
+// ═══════════════════════════════════════════════════════════════
+const CUSTOMER_NAMES = [
+  'Marcus','Devon','Jamal','Tyrone','Kevin','Chris','Andre','Darius',
+  'Isaiah','Brandon','Jordan','Miles','Caleb','Aaron','Derek','Tremaine',
+  'Xavier','Raymond','Curtis','Lawrence','Lionel','Kendrick','Elijah','Malik',
+  'Terrence','Hassan','Dante','Reggie','Leroy','Clifton','Winston','Otis',
+  'Mrs. Patricia','Mrs. Gloria','Ms. Tamika','Ms. Danielle','Ms. Rochelle',
+  'Old Gerald','Young Lil D','Coach Bob','Prof. Wallace','Big Mike','Slim T',
+  'Uncle Ronnie','Cousin Pete','Mayor Chen','Detective Torres','Officer Riley'
+];
+const AVATARS_MALE   = ['👨','👦','🧔','👴','🧑','👱','🕵️','👮','🤵','🧑‍💼'];
+const AVATARS_FEMALE = ['👩','👩‍🦱','👩‍🦰','👩‍🦳','👵','🧕'];
+const AVATARS_VIP    = ['🎩','🤴','👑'];
+
+const SERVICES = [
+  {id:'trim',name:'Quick Trim',icon:'✂️',basePay:12,baseTime:8,xp:8,desc:'Fast basic trim',minLevel:1},
+  {id:'fade',name:'Classic Fade',icon:'💈',basePay:22,baseTime:14,xp:18,desc:'Clean taper fade',minLevel:1},
+  {id:'shave',name:'Hot Shave',icon:'🪒',basePay:18,baseTime:10,xp:12,desc:'Straight razor shave',minLevel:1},
+  {id:'lineup',name:'Line Up',icon:'📐',basePay:15,baseTime:8,xp:10,desc:'Crisp edge lineup',minLevel:2},
+  {id:'design',name:'Hair Design',icon:'🎨',basePay:35,baseTime:18,xp:30,desc:'Custom cut design',minLevel:3},
+  {id:'beard',name:'Beard Trim',icon:'🧔',basePay:20,baseTime:10,xp:14,desc:'Shape & condition beard',minLevel:2},
+  {id:'color',name:'Hair Color',icon:'🎭',basePay:50,baseTime:22,xp:40,desc:'Full coloring service',minLevel:5},
+  {id:'perm',name:'Perm Treatment',icon:'💫',basePay:65,baseTime:28,xp:55,desc:'Chemical perm/relax',minLevel:6},
+  {id:'scalp',name:'Scalp Treatment',icon:'💆',basePay:40,baseTime:16,xp:32,desc:'Hot oil scalp massage',minLevel:4},
+  {id:'kids',name:'Kids Cut',icon:'🧒',basePay:14,baseTime:10,xp:12,desc:'Special kids styling',minLevel:1},
+  {id:'dreads',name:'Dread Styling',icon:'🌀',basePay:75,baseTime:32,xp:65,desc:'Locks & dread maintenance',minLevel:7},
+  {id:'signature',name:'Signature Look',icon:'⭐',basePay:120,baseTime:40,xp:100,desc:'Full premium transformation',minLevel:10},
+];
+
+const UPGRADES_DATA = [
+  // TOOLS
+  {id:'scissors2',name:'Pro Scissors',icon:'✂️',desc:'German steel blades. +15% tip chance, better precision.',cat:'Tools',maxLevel:1,baseCost:80,effect:()=>{G.mod.tipMulti+=0.15;}},
+  {id:'razor2',name:'Straight Razor Pro',icon:'🪒',desc:'Traditional straight razor. Unlock hot shave bonuses.',cat:'Tools',maxLevel:1,baseCost:60,effect:()=>{G.mod.tipMulti+=0.1;}},
+  {id:'clippers2',name:'Wahl Magic Clips',icon:'💈',desc:'Pro clippers. -20% service time.',cat:'Tools',maxLevel:3,baseCost:100,costMult:2.2,effect:()=>{G.mod.speedMulti+=0.2;}},
+  {id:'chair',name:'Barber Chair',icon:'💺',desc:'Hydraulic chair. Customers more comfortable (+patience).',cat:'Tools',maxLevel:3,baseCost:150,costMult:2.5,effect:()=>{G.mod.patienceBonus+=20;}},
+  {id:'mirror',name:'Premium Mirror',icon:'🪞',desc:'Full-wall mirror. Customers tip more seeing the result.',cat:'Tools',maxLevel:1,baseCost:120,effect:()=>{G.flags.mirrorInstalled=true;G.mod.tipMulti+=0.2;}},
+  {id:'products',name:'Premium Products',icon:'🧴',desc:'Pomades, oils, balms. Unlock scalp & color services.',cat:'Tools',maxLevel:1,baseCost:200,effect:()=>{G.flags.premiumProducts=true;G.mod.priceMulti+=0.15;}},
+  // SHOP
+  {id:'music',name:'Sound System',icon:'🎵',desc:'Good vibes = happy customers. +10% patience.',cat:'Shop',maxLevel:1,baseCost:180,effect:()=>{G.flags.musicPlaying=true;G.mod.patienceBonus+=15;}},
+  {id:'coffee',name:'Coffee Station',icon:'☕',desc:'Free coffee. Customers wait 25% longer.',cat:'Shop',maxLevel:1,baseCost:250,effect:()=>{G.flags.coffeeStation=true;G.mod.patienceBonus+=30;}},
+  {id:'wifi',name:'Free WiFi',icon:'📶',desc:'Customers love WiFi. +20% queue patience.',cat:'Shop',maxLevel:1,baseCost:150,effect:()=>{G.flags.wifiAvailable=true;G.mod.patienceBonus+=20;}},
+  {id:'luxchair',name:'Luxury Chair',icon:'🛋️',desc:'Massaging chair. VIP visits +40%, better tips.',cat:'Shop',maxLevel:1,baseCost:500,effect:()=>{G.flags.luxuryChair=true;G.mod.vipChance+=0.15;G.mod.tipMulti+=0.25;}},
+  {id:'neon',name:'Neon Sign',icon:'💡',desc:'Visible from afar. +1 queue slot, +15% rep gain.',cat:'Shop',maxLevel:1,baseCost:300,effect:()=>{G.flags.neonSign=true;G.mod.queueSize+=1;G.mod.repMulti+=0.15;}},
+  {id:'expandqueue',name:'Waiting Area',icon:'🪑',desc:'More chairs. Queue capacity +2.',cat:'Shop',maxLevel:3,baseCost:200,costMult:2,effect:()=>{G.mod.queueSize+=2;}},
+  {id:'onlinebook',name:'Online Booking',icon:'📱',desc:'Clients book ahead. Spawn loyal customers more often.',cat:'Marketing',maxLevel:1,baseCost:400,effect:()=>{G.flags.onlineBooking=true;G.mod.vipChance+=0.1;}},
+  {id:'loyalty',name:'Loyalty Cards',icon:'🃏',desc:'Stamp cards. Repeat customers tip 30% more.',cat:'Marketing',maxLevel:1,baseCost:180,effect:()=>{G.flags.loyaltyCards=true;G.mod.tipMulti+=0.3;}},
+  {id:'streetads',name:'Street Ads',icon:'📋',desc:'Flyers & posters. +30% customer spawn rate.',cat:'Marketing',maxLevel:1,baseCost:300,effect:()=>{G.flags.streetAds=true;G.mod.eventChance+=0.3;}},
+  {id:'location2',name:'Premium Location',icon:'🏙️',desc:'Move to upscale district. +25% all prices.',cat:'Marketing',maxLevel:1,baseCost:2000,effect:()=>{G.flags.premiumLocation=true;G.mod.priceMulti+=0.25;}},
+  // STAFF
+  {id:'hire1',name:'Hire Junior Barber',icon:'💇',desc:'Serves 1 customer automatically per day.',cat:'Staff',maxLevel:3,baseCost:500,costMult:3,effect:()=>{addStaff('junior');}},
+  {id:'hire2',name:'Hire Senior Barber',icon:'🧑‍💼',desc:'Serves 2 customers/day, better quality.',cat:'Staff',maxLevel:2,baseCost:1200,costMult:2.5,effect:()=>{addStaff('senior');}},
+  {id:'hire3',name:'Hire Receptionist',icon:'📞',desc:'Handles walk-ins. Queue never loses patience while waiting.',cat:'Staff',maxLevel:1,baseCost:800,effect:()=>{addStaff('receptionist');}},
+  // ADVANCED
+  {id:'training',name:'Training Program',icon:'📚',desc:'+50% XP from all services.',cat:'Advanced',maxLevel:3,baseCost:600,costMult:2,effect:()=>{G.mod.xpMulti+=0.5;}},
+  {id:'franchise',name:'Franchise License',icon:'🏆',desc:'Unlock franchise mode. Prestige bonus +1.',cat:'Advanced',maxLevel:1,baseCost:5000,effect:()=>{G.flags.franchiseReady=true;}},
+];
+
+const SKILLS_DATA = [
+  {id:'quickhands',name:'Quick Hands',icon:'⚡',desc:'Services are 15% faster.',cost:1,req:[],effect:()=>{G.mod.speedMulti+=0.15;}},
+  {id:'smooth_talk',name:'Smooth Talk',icon:'💬',desc:'Customers tip 20% more.',cost:1,req:[],effect:()=>{G.mod.tipMulti+=0.20;}},
+  {id:'eagle_eye',name:'Eagle Eye',icon:'🦅',desc:'Minigame perfect zone is 20% wider.',cost:1,req:[],effect:()=>{G.mod.minigameEasy+=0.20;}},
+  {id:'rep_boost',name:'Street Cred',icon:'🌟',desc:'Gain 25% more reputation.',cost:1,req:[],effect:()=>{G.mod.repMulti+=0.25;}},
+  {id:'tip_master',name:'Tip Master',icon:'💰',desc:'Tips stack an additional 10% per combo.',cost:2,req:['smooth_talk'],effect:()=>{}},
+  {id:'speed_demon',name:'Speed Demon',icon:'💨',desc:'Services 30% faster. Customers love efficiency.',cost:2,req:['quickhands'],effect:()=>{G.mod.speedMulti+=0.3;}},
+  {id:'vip_magnet',name:'VIP Magnet',icon:'👑',desc:'+20% chance of VIP customers.',cost:2,req:['rep_boost'],effect:()=>{G.mod.vipChance+=0.20;}},
+  {id:'perfectionist',name:'Perfectionist',icon:'🎯',desc:'Perfect cuts give double XP.',cost:2,req:['eagle_eye'],effect:()=>{}},
+  {id:'legendary',name:'Legendary Barber',icon:'🏆',desc:'All prices +30%. Reputation doubles.',cost:3,req:['tip_master','speed_demon'],effect:()=>{G.mod.priceMulti+=0.3;G.mod.repMulti+=1;}},
+  {id:'zen_cut',name:'Zen Cut',icon:'🧘',desc:'No patience loss during active service.',cost:3,req:['perfectionist'],effect:()=>{}},
+  {id:'empire',name:'Empire Builder',icon:'🏙️',desc:'Staff earn 50% more per auto-serve.',cost:3,req:['vip_magnet','legendary'],effect:()=>{}},
+  {id:'immortal',name:'The Legend',icon:'⭐',desc:'Customers never walk out. Ever.',cost:4,req:['zen_cut','empire'],effect:()=>{}},
+];
+
+const ACHIEVEMENTS_DATA = [
+  {id:'first_cut',name:'First Cut',icon:'✂️',desc:'Complete your first service.',check:()=>G.totalServed>=1},
+  {id:'ten_served',name:'Getting Busy',icon:'💈',desc:'Serve 10 customers.',check:()=>G.totalServed>=10},
+  {id:'fifty_served',name:'Crowd Favorite',icon:'👥',desc:'Serve 50 customers.',check:()=>G.totalServed>=50},
+  {id:'hundred_served',name:'Century Club',icon:'💯',desc:'Serve 100 customers.',check:()=>G.totalServed>=100},
+  {id:'first_perfect',name:'Precision',icon:'🎯',desc:'Land your first perfect cut.',check:()=>G.totalPerfects>=1},
+  {id:'ten_perfect',name:'Surgeon\'s Touch',icon:'🏥',desc:'10 perfect cuts.',check:()=>G.totalPerfects>=10},
+  {id:'hundred_bucks',name:'First Hundred',icon:'💵',desc:'Earn $100.',check:()=>G.totalEarned>=100},
+  {id:'thousand_bucks',name:'Grand Barber',icon:'💸',desc:'Earn $1,000.',check:()=>G.totalEarned>=1000},
+  {id:'ten_grand',name:'Stacking Bread',icon:'💰',desc:'Earn $10,000.',check:()=>G.totalEarned>=10000},
+  {id:'fifty_grand',name:'Barber Baron',icon:'🏦',desc:'Earn $50,000.',check:()=>G.totalEarned>=50000},
+  {id:'combo5',name:'On Fire',icon:'🔥',desc:'Reach a 5x combo.',check:()=>G.peakCombo>=5},
+  {id:'combo10',name:'Unstoppable',icon:'⚡',desc:'Reach a 10x combo.',check:()=>G.peakCombo>=10},
+  {id:'level5',name:'Journeyman',icon:'⭐',desc:'Reach barber level 5.',check:()=>G.level>=5},
+  {id:'level10',name:'Master Barber',icon:'🎖️',desc:'Reach barber level 10.',check:()=>G.level>=10},
+  {id:'level15',name:'Grandmaster',icon:'👑',desc:'Reach barber level 15.',check:()=>G.level>=15},
+  {id:'day7',name:'Week One',icon:'📅',desc:'Survive 7 days.',check:()=>G.totalDays>=7},
+  {id:'day30',name:'Month Strong',icon:'🗓️',desc:'Survive 30 days.',check:()=>G.totalDays>=30},
+  {id:'vip_served',name:'Fancy Clientele',icon:'🎩',desc:'Serve a VIP customer.',check:()=>G.totalVIP>=1},
+  {id:'upgrade5',name:'Investor',icon:'🔧',desc:'Buy 5 upgrades.',check:()=>Object.keys(G.upgrades).length>=5},
+  {id:'upgrade15',name:'Mogul',icon:'🏗️',desc:'Buy 15 upgrades.',check:()=>Object.keys(G.upgrades).length>=15},
+  {id:'prestige1',name:'Reborn',icon:'✦',desc:'Prestige once.',check:()=>G.prestige>=1},
+  {id:'rep1000',name:'Local Legend',icon:'🌟',desc:'Reach 1000 reputation.',check:()=>G.rep>=1000},
+  {id:'no_walkout',name:'Perfect Day',icon:'😊',desc:'Complete a day with zero walkouts.',check:()=>G.todayWalked===0&&G.todayServed>0},
+  {id:'signature_done',name:'Transformation Artist',icon:'🎨',desc:'Complete a Signature Look service.',check:()=>G.totalSignature>=1},
+];
+
+const MARKET_DATA = [
+  {id:'boost_xp',name:'XP Boost Potion',icon:'🧪',desc:'Double XP for 10 services.',cost:500,effect:()=>{G.xpBoostLeft=10;toast('XP Boost active! 10 services.','good');}},
+  {id:'customer_rush',name:'Customer Rush',icon:'📣',desc:'Instantly fill queue.',cost:300,effect:()=>fillQueue()},
+  {id:'rep_buy',name:'Buy Reputation',icon:'⭐',desc:'Instantly gain 200 rep.',cost:800,effect:()=>{G.rep+=200;toast('+200 Reputation!','good');}},
+  {id:'patience_elixir',name:'Patience Elixir',icon:'⏰',desc:'All current customers gain +50 patience.',cost:200,effect:()=>{G.queue.forEach(c=>c.patience=Math.min(100,c.patience+50));if(G.activeCustomer)G.activeCustomer.patience=Math.min(100,G.activeCustomer.patience+50);toast('Queue patience restored!','good');}},
+  {id:'vip_invite',name:'VIP Invite',icon:'🎩',desc:'Next customer is a guaranteed VIP.',cost:600,effect:()=>{G.nextVIP=true;toast('Next customer will be VIP!','special');}},
+  {id:'cash_loan',name:'Cash Advance',icon:'💵',desc:'Borrow $1000 (repay $1200 next day).',cost:0,buyCost:0,effect:()=>{G.cash+=1000;G.debt=(G.debt||0)+1200;toast('Borrowed $1000! Debt: $'+(G.debt),'bad');}},
+  {id:'perfect_tool',name:'Perfect Tool',icon:'⭐',desc:'Next service is guaranteed perfect.',cost:400,effect:()=>{G.nextPerfect=true;toast('Next cut will be PERFECT!','gold');}},
+  {id:'staff_boost',name:'Staff Espresso',icon:'☕',desc:'Staff serve 3 extra customers today.',cost:250,effect:()=>{G.staffBonus=(G.staffBonus||0)+3;toast('Staff morale boosted!','good');}},
+];
+
+const RANDOM_EVENTS = [
+  {id:'heatwave',title:'☀️ Heat Wave',desc:'Hot outside — customers want head shaves. +50% trim tips today.',type:'good',effect:()=>{G.mod.tipMulti+=0.5;setTimeout(()=>G.mod.tipMulti-=0.5,G.gameTime*10000);}},
+  {id:'inspection',title:'🏛️ Health Inspection',desc:'Inspector arrives! Pass by spending $80 on cleaning.',type:'bad',effect:null,choice:{cost:80,pass:'Passed! +50 rep.',fail:'Failed! -100 rep, shop briefly closed.'},passEffect:()=>{G.rep+=50;},failEffect:()=>{G.rep=Math.max(0,G.rep-100);}},
+  {id:'celeb',title:'🌟 Celebrity Visit',desc:'A local celeb dropped in for a cut! Huge reputation boost if you serve well.',type:'special',effect:()=>{spawnVIPCustomer();}},
+  {id:'price_war',title:'💸 Competition Sale',desc:'Rival shop doing 50% off! You must match or lose customers.',type:'bad',effect:()=>{G.mod.priceMulti=Math.max(0.5,G.mod.priceMulti-0.2);setTimeout(()=>G.mod.priceMulti+=0.2,60000);}},
+  {id:'supplier',title:'🚚 Supplier Deal',desc:'Bulk product deal! Buy premium products at 50% off.',type:'good',effect:()=>{G.mod.priceMulti+=0.1;}},
+  {id:'review_bomb',title:'📱 Bad Review',desc:'A troll left a bad review. -50 reputation.',type:'bad',effect:()=>{G.rep=Math.max(0,G.rep-50);}},
+  {id:'viral',title:'📈 Went Viral!',desc:'Your shop went viral on social media. +150 rep, queue fills up!',type:'special',effect:()=>{G.rep+=150;fillQueue();}},
+  {id:'power_out',title:'⚡ Power Outage',desc:'Lights out for 10 minutes. No customers can be served.',type:'bad',effect:()=>{G.shopOpen=false;setTimeout(()=>{G.shopOpen=true;toast('Power restored!','good');},15000);}},
+  {id:'school_visit',title:'🏫 School Group',desc:'15 kids need haircuts! Bonus cash if you clear the queue.',type:'special',effect:()=>{for(let i=0;i<3;i++)spawnCustomer('kids');}},
+  {id:'tipping_fad',title:'💰 Tipping Trend',desc:'People are tipping big today. +100% tips for 5 services.',type:'good',effect:()=>{G.tipBonusLeft=5;G.tipBonusMult=2;}},
+];
+
+// XP requirements per level
+function xpForLevel(l){return Math.floor(80*Math.pow(l,1.4));}
+
+// ═══════════════════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════════════════
+function startGame(){
+  const n=document.getElementById('barber-name-input').value.trim();
+  G.barberName=n||'Buddy';
+  document.getElementById('screen-intro').style.display='none';
+  document.getElementById('screen-game').style.display='block';
+
+  // Apply prestige perks
+  applyPrestigePerks();
+
+  buildUpgradeList();
+  buildSkillTree();
+  buildAchievements();
+  buildMarket();
+  updateHUD();
+  updateQueue();
+  updateStaff();
+  buildServiceGrid();
+
+  // Start timers
+  startSpawnTimer();
+  startGameClock();
+
+  logEvent(`Welcome back, ${G.barberName}. Shop is open!`,'blue');
+  toast(`Welcome, ${G.barberName}! ✂️`,'gold');
+}
+
+function applyPrestigePerks(){
+  G.prestigePerks.forEach(pk=>{
+    if(pk==='cash_bonus') G.cash+=500*G.prestige;
+    if(pk==='price_bonus') G.mod.priceMulti+=0.1*G.prestige;
+    if(pk==='xp_bonus') G.mod.xpMulti+=0.25*G.prestige;
+    if(pk==='rep_bonus') G.mod.repMulti+=0.2*G.prestige;
+    if(pk==='queue_bonus') G.mod.queueSize+=G.prestige;
+  });
+}
+
+function restartGame(){
+  const prestige=G.prestige, perks=G.prestigePerks,
+        totalDays=G.totalDays, totalEarned=G.totalEarned,
+        totalServed=G.totalServed, totalPerfects=G.totalPerfects,
+        peakCombo=G.peakCombo, ach=G.completedAchievements,
+        barberName=G.barberName;
+
+  // Reset everything but keep prestige/career/ach
+  Object.assign(G,{
+    cash:0,day:1,rep:0,xp:0,level:1,
+    skillPoints:0,combo:0,peakCombo,
+    totalEarned,totalServed,totalWalked:G.totalWalked,
+    totalTips:G.totalTips,totalPerfects,totalDays,
+    todayEarned:0,todayServed:0,todayWalked:0,todayTips:0,todayPerfects:0,
+    gameTime:540,shopOpen:true,activeCustomer:null,queue:[],
+    staff:[],unlockedSkills:[],
+    completedAchievements:ach,
+    upgrades:{},prestige,prestigePerks:perks,
+    barberName,
+    mod:{priceMulti:1,tipMulti:1,patienceBonus:0,speedMulti:1,
+         xpMulti:1,repMulti:1,queueSize:0,staffSlots:1,
+         minigameEasy:0,freeService:0,vipChance:0,eventChance:1},
+    flags:{premiumProducts:false,mirrorInstalled:false,musicPlaying:false,
+           coffeeStation:false,wifiAvailable:false,luxuryChair:false,
+           neonSign:false,barbersPolePremium:false,trainingDummies:false,
+           onlineBooking:false,loyaltyCards:false,streetAds:false,
+           premiumLocation:false,franchiseReady:false},
+    marketBought:{},nextVIP:false,nextPerfect:false,
+    xpBoostLeft:0,tipBonusLeft:0,tipBonusMult:1,staffBonus:0,debt:0,
+    totalVIP:G.totalVIP||0,totalSignature:G.totalSignature||0,
+  });
+
+  document.getElementById('screen-gameover').style.display='none';
+  document.getElementById('screen-game').style.display='block';
+  logLines=[];activeEvents=[];
+  document.getElementById('event-log').innerHTML='';
+  document.getElementById('random-events-area').innerHTML='';
+  clearTimers();
+  applyPrestigePerks();
+  buildUpgradeList();
+  buildSkillTree();
+  buildAchievements();
+  buildMarket();
+  updateHUD();
+  updateQueue();
+  updateStaff();
+  buildServiceGrid();
+  startSpawnTimer();
+  startGameClock();
+  logEvent(`Day ${G.day} — Shop is open, ${G.barberName}!`,'blue');
+  switchToActive();
+}
+
+function clearTimers(){
+  clearInterval(customerTimer);clearInterval(patienceTimer);
+  clearInterval(spawnTimer);clearInterval(gameClockTimer);
+  customerTimer=patienceTimer=spawnTimer=gameClockTimer=null;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  GAME CLOCK
+// ═══════════════════════════════════════════════════════════════
+let gameClockTimer=null;
+function startGameClock(){
+  gameClockTimer=setInterval(()=>{
+    G.gameTime+=1; // 1 minute per tick (sped up)
+    const h=Math.floor(G.gameTime/60)%24;
+    const m=G.gameTime%60;
+    document.getElementById('hud-time').textContent=
+      `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+    // Shop closes at 8pm (20:00 = 1200 minutes)
+    if(G.gameTime>=1200&&G.shopOpen){
+      logEvent('Shop closing time! Day ending...','blue');
+      setTimeout(endDay,3000);
+    }
+    // Random events
+    if(Math.random()<0.002*G.mod.eventChance&&activeEvents.length<2){
+      triggerRandomEvent();
+    }
+  },1000); // 1 real second = 1 game minute
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  CUSTOMER SPAWN
+// ═══════════════════════════════════════════════════════════════
+function startSpawnTimer(){
+  let baseInterval=8000;
+  spawnTimer=setInterval(()=>{
+    if(!G.shopOpen) return;
+    const maxQ=G.maxQueue+G.mod.queueSize;
+    if(G.queue.length<maxQ){
+      const chance=G.flags.streetAds?0.85:0.65;
+      if(Math.random()<chance) spawnCustomer();
+    }
+    // Staff auto-serve
+    autoServeStaff();
+  },baseInterval);
+
+  // Patience decay
+  patienceTimer=setInterval(()=>{
+    if(!G.shopOpen) return;
+    G.queue.forEach(c=>{
+      if(!G.unlockedSkills.includes('immortal')){
+        const hasReceptionist=G.staff.some(s=>s.type==='receptionist');
+        if(!hasReceptionist){
+          c.patience-=G.flags.coffeeStation?1.5:G.flags.wifiAvailable?2:3;
+        }
+      }
+      if(c.patience<=0){
+        // Walk out
+        const idx=G.queue.indexOf(c);
+        if(idx>-1){
+          G.queue.splice(idx,1);
+          G.totalWalked++;G.todayWalked++;
+          G.combo=0;
+          logEvent(`${c.name} got tired of waiting and left.`,'red');
+          toast(`${c.name} walked out! 😤`,'bad');
+          updateQueue();updateHUD();
+        }
+      }
+    });
+    // Active customer patience
+    if(G.activeCustomer&&minigameActive===false){
+      if(!G.unlockedSkills.includes('zen_cut')&&!G.unlockedSkills.includes('immortal')){
+        G.activeCustomer.patience-=1;
+      }
+      if(G.activeCustomer.patience<=0){
+        dismissCurrentCustomer(false);
+      }
+    }
+    updatePatienceDisplay();
+  },1000);
+}
+
+function spawnCustomer(forcedSvc=null){
+  const maxQ=G.maxQueue+G.mod.queueSize;
+  if(G.queue.length>=maxQ) return;
+
+  const isVIP=(G.nextVIP||Math.random()<(0.1+G.mod.vipChance));
+  G.nextVIP=false;
+  const isAngry=Math.random()<0.1;
+  const isLoyal=G.flags.loyaltyCards&&Math.random()<0.25;
+
+  const name=CUSTOMER_NAMES[Math.floor(Math.random()*CUSTOMER_NAMES.length)];
+  const avPool=isVIP?AVATARS_VIP:(name.startsWith('Mrs')||name.startsWith('Ms.')?AVATARS_FEMALE:AVATARS_MALE);
+  const avatar=avPool[Math.floor(Math.random()*avPool.length)];
+
+  // Pick a service they want
+  const availableSvcs=SERVICES.filter(s=>s.minLevel<=G.level);
+  const svc=forcedSvc?SERVICES.find(s=>s.id===forcedSvc)||availableSvcs[0]
+    :availableSvcs[Math.floor(Math.random()*availableSvcs.length)];
+
+  const patience=60+G.mod.patienceBonus+(isVIP?20:0)+(isAngry?-20:0);
+
+  const c={
+    id:Math.random().toString(36).slice(2),
+    name, avatar, svc, isVIP, isAngry, isLoyal,
+    patience:Math.min(100,Math.max(20,patience)),
+    maxPatience:Math.min(100,Math.max(20,patience)),
+    tipMult:isVIP?1.8:isLoyal?1.3:1,
+  };
+
+  G.queue.push(c);
+  if(isVIP) G.totalVIP=(G.totalVIP||0)+1;
+
+  logEvent(`${c.name} joined the queue — wants ${svc.name}`+(isVIP?' 👑':'')+(isAngry?' 😤':''),'');
+  updateQueue();
+
+  // Auto-seat if chair empty
+  if(!G.activeCustomer) seatNextCustomer();
+}
+
+function spawnVIPCustomer(){spawnCustomer();G.queue[G.queue.length-1].isVIP=true;}
+
+function fillQueue(){
+  const maxQ=G.maxQueue+G.mod.queueSize;
+  for(let i=G.queue.length;i<maxQ;i++) spawnCustomer();
+}
+
+function seatNextCustomer(){
+  if(G.activeCustomer||G.queue.length===0) return;
+  const c=G.queue.shift();
+  G.activeCustomer=c;
+  showCustomerCard(c);
+  updateQueue();
+  logEvent(`${c.name} sat in the chair.`,'');
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  CUSTOMER CARD UI
+// ═══════════════════════════════════════════════════════════════
+function showCustomerCard(c){
+  document.getElementById('empty-chair').classList.add('hidden');
+  document.getElementById('customer-card-real').classList.remove('hidden');
+
+  document.getElementById('cust-avatar').textContent=c.avatar;
+  document.getElementById('cust-name').textContent=c.name;
+
+  const typeLine=c.isVIP?'VIP Client':c.isAngry?'Impatient Client':c.isLoyal?'Loyal Regular':'Regular Client';
+  document.getElementById('cust-type-line').textContent=typeLine;
+
+  const tagsEl=document.getElementById('cust-tags');
+  tagsEl.innerHTML='';
+  if(c.isVIP) tagsEl.innerHTML+='<span class="cust-tag tag-vip">VIP</span>';
+  if(c.isAngry) tagsEl.innerHTML+='<span class="cust-tag tag-angry">Impatient</span>';
+  if(c.isLoyal) tagsEl.innerHTML+='<span class="cust-tag tag-loyal">Loyal</span>';
+
+  const REQUESTS=[
+    `"Could you do a ${c.svc.name.toLowerCase()} for me?"`,
+    `"I want the usual — ${c.svc.name.toLowerCase()}."`,
+    `"My boy said you're the best. Hook me up with a ${c.svc.name.toLowerCase()}."`,
+    `"${c.svc.name}, please. And make it clean."`,
+    `"I got an event tonight, need that ${c.svc.name.toLowerCase()} looking fresh."`,
+  ];
+  document.getElementById('cust-request').textContent=REQUESTS[Math.floor(Math.random()*REQUESTS.length)];
+
+  const card=document.getElementById('active-customer-card');
+  card.className='customer-card'+(c.isVIP?' vip':c.isAngry?' angry':'');
+
+  updatePatienceDisplay();
+  updateTipPreview();
+  buildServiceGrid();
+}
+
+function updatePatienceDisplay(){
+  if(!G.activeCustomer) return;
+  const c=G.activeCustomer;
+  const pct=Math.max(0,c.patience/c.maxPatience*100);
+  const bar=document.getElementById('patience-bar-fill');
+  if(bar){bar.style.width=pct+'%';bar.className='bar-fill bar-patience'+(pct<30?' low':'');}
+  const pv=document.getElementById('patience-val');
+  if(pv) pv.textContent=Math.round(pct)+'%';
+}
+
+function updateTipPreview(){
+  if(!G.activeCustomer) return;
+  const tip=calcTip(G.activeCustomer);
+  const el=document.getElementById('tip-preview');
+  if(el) el.textContent='$'+tip.toFixed(0);
+}
+
+function calcTip(c){
+  const base=c.svc.basePay*0.3;
+  let mult=G.mod.tipMulti*c.tipMult*(1+G.combo*0.1);
+  if(G.unlockedSkills.includes('tip_master')) mult+=G.combo*0.1;
+  if(G.tipBonusLeft>0) mult*=G.tipBonusMult;
+  return Math.round(base*mult);
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  SERVICE GRID
+// ═══════════════════════════════════════════════════════════════
+function buildServiceGrid(){
+  const el=document.getElementById('service-grid');
+  if(!el) return;
+  el.innerHTML='';
+  SERVICES.forEach(svc=>{
+    const unlocked=svc.minLevel<=G.level;
+    const isWanted=G.activeCustomer&&G.activeCustomer.svc.id===svc.id;
+    const price=Math.round(svc.basePay*G.mod.priceMulti);
+    const btn=document.createElement('button');
+    btn.className='service-btn'+(isWanted?' '+'':'')+(!unlocked?' ':'');
+    btn.disabled=!unlocked||!G.activeCustomer||minigameActive;
+    btn.innerHTML=`<span class="svc-icon">${svc.icon}</span>
+      <span>${svc.name}</span>
+      <span class="svc-price">$${price}</span>
+      <span class="svc-time">~${Math.round(svc.baseTime/G.mod.speedMulti)}s</span>`;
+    if(isWanted) btn.style.borderColor='var(--accent)';
+    btn.onclick=()=>startService(svc);
+    el.appendChild(btn);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  MINIGAME
+// ═══════════════════════════════════════════════════════════════
+function startService(svc){
+  if(!G.activeCustomer||minigameActive) return;
+  minigameActive=true;
+  minigameSvc=svc;
+
+  document.getElementById('minigame-wrap').classList.remove('hidden');
+  document.getElementById('minigame-title').textContent=svc.name.toUpperCase()+' — PRECISION CUT';
+  document.getElementById('precision-result').textContent='';
+  document.getElementById('precision-result').className='precision-result';
+
+  // Zone size: base 25% + upgrades + skills
+  let zoneSize=25+G.mod.minigameEasy*100;
+  zoneSize=Math.min(60,zoneSize);
+  const zoneLeft=Math.random()*(100-zoneSize);
+  const zone=document.getElementById('precision-zone');
+  zone.style.left=zoneLeft+'%';
+  zone.style.width=zoneSize+'%';
+
+  // Cursor speed: faster at higher levels/harder services
+  const speed=Math.max(0.5,1.5-G.level*0.05);
+  document.getElementById('precision-cursor').style.setProperty('--slide-speed',speed+'s');
+
+  // Disable service buttons
+  buildServiceGrid();
+}
+
+function miniGameClick(){
+  if(!minigameActive) return;
+  const cursor=document.getElementById('precision-cursor');
+  const track=document.getElementById('precision-track');
+  const zone=document.getElementById('precision-zone');
+
+  const tRect=track.getBoundingClientRect();
+  const cRect=cursor.getBoundingClientRect();
+  const zRect=zone.getBoundingClientRect();
+
+  const cursorCenter=cRect.left+cRect.width/2;
+  const zoneLeft=zRect.left;
+  const zoneRight=zRect.right;
+  const zoneMid=(zoneLeft+zoneRight)/2;
+  const dist=Math.abs(cursorCenter-zoneMid);
+  const zoneW=zoneRight-zoneLeft;
+
+  let quality,bonus=1,label='',className='';
+  const isPerfect=G.nextPerfect;G.nextPerfect=false;
+
+  if(isPerfect||dist<zoneW*0.15){
+    quality='perfect';label='✨ PERFECT!';className='result-perfect';bonus=2;G.totalPerfects++;G.todayPerfects++;
+  } else if(dist<zoneW*0.4){
+    quality='great';label='⚡ GREAT';className='result-great';bonus=1.5;
+  } else if(dist<zoneW*0.8||cursorCenter>=zoneLeft&&cursorCenter<=zoneRight){
+    quality='ok';label='👍 GOOD';className='result-ok';bonus=1;
+  } else {
+    quality='miss';label='✂️ MISS';className='result-miss';bonus=0.3;G.combo=0;
+  }
+
+  const resEl=document.getElementById('precision-result');
+  resEl.textContent=label;
+  resEl.className='precision-result '+className;
+
+  finishService(minigameSvc,quality,bonus);
+  setTimeout(()=>{
+    document.getElementById('minigame-wrap').classList.add('hidden');
+    minigameActive=false;minigameSvc=null;
+    buildServiceGrid();
+  },1200);
+}
+
+function finishService(svc,quality,bonus){
+  const c=G.activeCustomer;
+  if(!c) return;
+
+  let pay=Math.round(svc.basePay*G.mod.priceMulti*bonus);
+  let tip=quality!=='miss'?calcTip(c):0;
+  let xpGain=Math.round(svc.xp*G.mod.xpMulti*bonus*(G.xpBoostLeft>0?2:1));
+  if(G.xpBoostLeft>0) G.xpBoostLeft--;
+  if(G.tipBonusLeft>0){G.tipBonusLeft--;if(G.tipBonusLeft===0){G.tipBonusMult=1;}}
+
+  if(quality==='perfect'&&G.unlockedSkills.includes('perfectionist')) xpGain*=2;
+
+  const total=pay+tip;
+  G.cash+=total;
+  G.totalEarned+=total;
+  G.todayEarned+=total;
+  G.totalTips+=tip;
+  G.todayTips+=tip;
+  G.totalServed++;
+  G.todayServed++;
+
+  if(quality!=='miss'){
+    G.combo++;
+    if(G.combo>G.peakCombo) G.peakCombo=G.combo;
+    showCombo();
+  }
+
+  // Rep gain
+  const repGain=Math.round((quality==='perfect'?8:quality==='great'?5:quality==='ok'?2:0)*G.mod.repMulti*(c.isVIP?2:1));
+  G.rep+=repGain;
+
+  // XP & level up
+  G.xp+=xpGain;
+  checkLevelUp();
+
+  if(svc.id==='signature') G.totalSignature=(G.totalSignature||0)+1;
+
+  logEvent(`${c.name}: ${svc.name} — $${pay}+(tip $${tip}) [${quality.toUpperCase()}] +${xpGain}XP +${repGain}rep`,'gold');
+  if(quality==='perfect') toast(`PERFECT CUT! +$${total} 💫`,'gold');
+  else if(quality==='great') toast(`Great cut! +$${total}`,'good');
+
+  updateHUD();
+  checkAchievements();
+  dismissCurrentCustomer(true);
+
+  document.getElementById('stat-served').textContent=G.todayServed;
+  document.getElementById('stat-tips').textContent='$'+G.todayTips;
+  document.getElementById('stat-perfects').textContent=G.todayPerfects;
+  document.getElementById('stat-combo').textContent=G.peakCombo;
+}
+
+function showCombo(){
+  if(G.combo<2) return;
+  const el=document.getElementById('combo-display');
+  el.textContent=`${G.combo}x COMBO 🔥`;
+  el.classList.add('show');
+  clearTimeout(el._t);
+  el._t=setTimeout(()=>el.classList.remove('show'),1500);
+  document.getElementById('hud-streak').textContent=G.combo+'🔥';
+}
+
+function dismissCurrentCustomer(served){
+  G.activeCustomer=null;
+  document.getElementById('empty-chair').classList.remove('hidden');
+  document.getElementById('customer-card-real').classList.add('hidden');
+  if(!served){
+    G.combo=0;G.todayWalked++;G.totalWalked++;
+    logEvent('Customer left unsatisfied.','red');
+    document.getElementById('stat-walked').textContent=G.todayWalked;
+  }
+  setTimeout(seatNextCustomer,800);
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  STAFF
+// ═══════════════════════════════════════════════════════════════
+function addStaff(type){
+  const defs={
+    junior:{name:'Junior Barber',icon:'💇',servePerDay:1,payMult:0.5,desc:'Serves 1 customer/day'},
+    senior:{name:'Senior Barber',icon:'🧑‍💼',servePerDay:2,payMult:0.75,desc:'Serves 2 customers/day'},
+    receptionist:{name:'Receptionist',icon:'📞',servePerDay:0,payMult:0,desc:'Keeps queue calm'},
+  };
+  G.staff.push({...defs[type],type,id:Math.random().toString(36).slice(2),servedToday:0});
+  updateStaff();
+}
+
+function autoServeStaff(){
+  G.staff.forEach(s=>{
+    if(s.type==='receptionist') return;
+    const maxPerDay=s.servePerDay+(G.unlockedSkills.includes('empire')?1:0)+(G.staffBonus>0?1:0);
+    if(s.servedToday>=maxPerDay) return;
+    if(Math.random()<0.2){// ~20% chance per interval
+      const pay=Math.round(20*s.payMult*G.mod.priceMulti);
+      G.cash+=pay;G.totalEarned+=pay;G.todayEarned+=pay;
+      s.servedToday++;
+      logEvent(`${s.name} served a customer for $${pay}.`,'green');
+      if(G.staffBonus>0) G.staffBonus--;
+      updateHUD();
+    }
+  });
+}
+
+function updateStaff(){
+  const sl=document.getElementById('staff-list');
+  if(!sl) return;
+  if(G.staff.length===0){
+    sl.innerHTML='<div style="color:var(--text3);font-size:12px;">No staff hired yet.</div>';
+  } else {
+    sl.innerHTML=G.staff.map(s=>`
+      <div class="queue-item">
+        <div class="queue-avatar">${s.icon}</div>
+        <div class="queue-info">
+          <div class="queue-name">${s.name}</div>
+          <div class="queue-patience">${s.desc} | Served today: ${s.servedToday}</div>
+        </div>
+      </div>`).join('');
+  }
+
+  const hl=document.getElementById('hire-list');
+  if(!hl) return;
+  // Show hire options from upgrades
+  const hireUpgrades=UPGRADES_DATA.filter(u=>u.cat==='Staff');
+  hl.innerHTML=hireUpgrades.map(u=>{
+    const lvl=G.upgrades[u.id]||0;
+    const maxed=lvl>=(u.maxLevel||1);
+    const cost=Math.round(u.baseCost*Math.pow(u.costMult||1.5,lvl));
+    const canAfford=G.cash>=cost&&!maxed;
+    return `<div class="upgrade-item${canAfford?' can-afford':''}${maxed?' maxed':''}">
+      <div class="upgrade-header">
+        <span class="upgrade-icon">${u.icon}</span>
+        <span class="upgrade-name">${u.name}</span>
+        <span class="upgrade-level">Lv ${lvl}/${u.maxLevel||1}</span>
+      </div>
+      <div class="upgrade-desc">${u.desc}</div>
+      <div class="upgrade-footer">
+        <span class="upgrade-cost${canAfford?'':' cant'}">${maxed?'MAXED':'$'+cost}</span>
+        ${!maxed?`<button class="btn btn-sm ${canAfford?'btn-gold':'btn-ghost'}" onclick="buyUpgrade('${u.id}')" ${canAfford?'':'disabled'}>Hire</button>`:''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  UPGRADES
+// ═══════════════════════════════════════════════════════════════
+function buildUpgradeList(){
+  const el=document.getElementById('upgrade-list');
+  if(!el) return;
+  const cats=['Tools','Shop','Marketing','Advanced'];
+  let html='';
+  cats.forEach(cat=>{
+    const items=UPGRADES_DATA.filter(u=>u.cat===cat&&u.cat!=='Staff');
+    if(!items.length) return;
+    html+=`<div class="shop-section-title">${cat}</div>`;
+    items.forEach(u=>{
+      const lvl=G.upgrades[u.id]||0;
+      const maxed=lvl>=(u.maxLevel||1);
+      const cost=Math.round(u.baseCost*Math.pow(u.costMult||1.5,lvl));
+      const canAfford=G.cash>=cost&&!maxed;
+      html+=`<div class="upgrade-item${canAfford?' can-afford':''}${maxed?' maxed':''}">
+        <div class="upgrade-header">
+          <span class="upgrade-icon">${u.icon}</span>
+          <span class="upgrade-name">${u.name}</span>
+          <span class="upgrade-level">Lv ${lvl}/${u.maxLevel||1}</span>
+        </div>
+        <div class="upgrade-desc">${u.desc}</div>
+        <div class="upgrade-footer">
+          <span class="upgrade-cost${canAfford?'':' cant'}">${maxed?'✓ MAXED':'$'+cost}</span>
+          ${!maxed?`<button class="btn btn-sm ${canAfford?'btn-gold':'btn-ghost'}" onclick="buyUpgrade('${u.id}')" ${canAfford?'':'disabled'}>Buy</button>`:''}
+        </div>
+      </div>`;
+    });
+  });
+  el.innerHTML=html;
+}
+
+function buyUpgrade(id){
+  const u=UPGRADES_DATA.find(x=>x.id===id);
+  if(!u) return;
+  const lvl=G.upgrades[id]||0;
+  if(lvl>=(u.maxLevel||1)) return;
+  const cost=Math.round(u.baseCost*Math.pow(u.costMult||1.5,lvl));
+  if(G.cash<cost){toast('Not enough cash!','bad');return;}
+  G.cash-=cost;
+  G.upgrades[id]=(G.upgrades[id]||0)+1;
+  if(u.effect) u.effect();
+  logEvent(`Upgraded: ${u.name} (Lv ${G.upgrades[id]})`,`gold`);
+  toast(`${u.name} upgraded! ✅`,'gold');
+  updateHUD();buildUpgradeList();buildServiceGrid();
+  checkAchievements();updateStaff();
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  SKILLS
+// ═══════════════════════════════════════════════════════════════
+function buildSkillTree(){
+  const el=document.getElementById('skill-tree-list');
+  if(!el) return;
+  el.innerHTML=SKILLS_DATA.map(sk=>{
+    const unlocked=G.unlockedSkills.includes(sk.id);
+    const reqMet=sk.req.every(r=>G.unlockedSkills.includes(r));
+    const canUnlock=!unlocked&&reqMet&&G.skillPoints>=sk.cost;
+    const locked=!unlocked&&(!reqMet);
+    return `<div class="skill-node${unlocked?' unlocked':locked?' locked':''}" onclick="unlockSkill('${sk.id}')">
+      <div class="sn-header">
+        <span class="sn-icon">${sk.icon}</span>
+        <span class="sn-name">${sk.name}</span>
+        <span class="sn-cost">${unlocked?'✓':sk.cost+' SP'}</span>
+      </div>
+      <div class="sn-desc">${sk.desc}${sk.req.length?`<br><small style="color:var(--text3)">Req: ${sk.req.join(', ')}</small>`:''}</div>
+    </div>`;
+  }).join('');
+}
+
+function unlockSkill(id){
+  const sk=SKILLS_DATA.find(s=>s.id===id);
+  if(!sk||G.unlockedSkills.includes(id)) return;
+  if(!sk.req.every(r=>G.unlockedSkills.includes(r))){toast('Requirements not met!','bad');return;}
+  if(G.skillPoints<sk.cost){toast('Not enough Skill Points!','bad');return;}
+  G.skillPoints-=sk.cost;
+  G.unlockedSkills.push(id);
+  if(sk.effect) sk.effect();
+  logEvent(`Skill unlocked: ${sk.name}`,'purple');
+  toast(`${sk.name} unlocked! 🌟`,'special');
+  buildSkillTree();
+  document.getElementById('sp-display').textContent=G.skillPoints+' SP';
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  LEVEL UP
+// ═══════════════════════════════════════════════════════════════
+function checkLevelUp(){
+  const needed=xpForLevel(G.level);
+  if(G.xp>=needed){
+    G.xp-=needed;G.level++;G.skillPoints+=1;
+    toast(`LEVEL UP! Now Level ${G.level} ⭐ +1 Skill Point`,'special');
+    logEvent(`Level up! Now Level ${G.level}. Gained 1 Skill Point.`,'purple');
+    buildSkillTree();
+    document.getElementById('sp-display').textContent=G.skillPoints+' SP';
+    buildServiceGrid();// unlock new services
+  }
+  updateHUD();
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  ACHIEVEMENTS
+// ═══════════════════════════════════════════════════════════════
+function checkAchievements(){
+  ACHIEVEMENTS_DATA.forEach(a=>{
+    if(!G.completedAchievements.includes(a.id)&&a.check()){
+      G.completedAchievements.push(a.id);
+      toast(`🏆 Achievement: ${a.name}!`,'special');
+      logEvent(`Achievement unlocked: ${a.name}`,'purple');
+    }
+  });
+  buildAchievements();
+}
+
+function buildAchievements(){
+  const el=document.getElementById('ach-list');
+  if(!el) return;
+  const earned=G.completedAchievements.length;
+  const total=ACHIEVEMENTS_DATA.length;
+  document.getElementById('ach-count').textContent=`${earned}/${total}`;
+  el.innerHTML=ACHIEVEMENTS_DATA.map(a=>{
+    const done=G.completedAchievements.includes(a.id);
+    return `<div class="achievement${done?' earned':' locked'}">
+      <div class="ach-icon">${a.icon}</div>
+      <div class="ach-info">
+        <div class="ach-name">${a.name}</div>
+        <div class="ach-desc">${a.desc}</div>
+      </div>
+      ${done?'<div class="ach-badge">✓ Done</div>':''}
+    </div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  MARKET
+// ═══════════════════════════════════════════════════════════════
+function buildMarket(){
+  const el=document.getElementById('market-list');
+  if(!el) return;
+  el.innerHTML=MARKET_DATA.map(m=>{
+    const cost=m.cost||m.buyCost||0;
+    const canAfford=G.cash>=cost||cost===0;
+    return `<div class="upgrade-item${canAfford?' can-afford':''}">
+      <div class="upgrade-header">
+        <span class="upgrade-icon">${m.icon}</span>
+        <span class="upgrade-name">${m.name}</span>
+      </div>
+      <div class="upgrade-desc">${m.desc}</div>
+      <div class="upgrade-footer">
+        <span class="upgrade-cost${canAfford?'':' cant'}">${cost===0?'FREE':'$'+cost}</span>
+        <button class="btn btn-sm ${canAfford?'btn-gold':'btn-ghost'}" onclick="buyMarket('${m.id}')" ${canAfford?'':'disabled'}>Get</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function buyMarket(id){
+  const m=MARKET_DATA.find(x=>x.id===id);
+  if(!m) return;
+  const cost=m.cost||0;
+  if(G.cash<cost){toast('Not enough cash!','bad');return;}
+  G.cash-=cost;
+  m.effect();
+  updateHUD();buildMarket();
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  RANDOM EVENTS
+// ═══════════════════════════════════════════════════════════════
+function triggerRandomEvent(){
+  const pool=RANDOM_EVENTS.filter(e=>!activeEvents.find(a=>a.id===e.id));
+  if(!pool.length) return;
+  const ev=pool[Math.floor(Math.random()*pool.length)];
+  activeEvents.push(ev);
+  if(ev.effect) ev.effect();
+
+  const area=document.getElementById('random-events-area');
+  const card=document.createElement('div');
+  card.className='event-card '+(ev.type||'');
+  card.id='event-'+ev.id;
+
+  let choiceHTML='';
+  if(ev.choice){
+    choiceHTML=`<div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <button class="btn btn-gold btn-sm" onclick="resolveEvent('${ev.id}','pass')">Pay $${ev.choice.cost}</button>
+      <button class="btn btn-red btn-sm" onclick="resolveEvent('${ev.id}','fail')">Ignore</button>
+    </div>`;
+  } else {
+    choiceHTML=`<button class="btn btn-ghost btn-sm" onclick="dismissEvent('${ev.id}')">Dismiss</button>`;
+  }
+
+  card.innerHTML=`<div class="event-title">${ev.title}</div>
+    <div class="event-desc">${ev.desc}</div>
+    ${choiceHTML}`;
+  area.appendChild(card);
+  logEvent(`EVENT: ${ev.title}`,'purple');
+  toast(ev.title,'special');
+
+  if(!ev.choice) setTimeout(()=>dismissEvent(ev.id),12000);
+}
+
+function resolveEvent(id,choice){
+  const ev=RANDOM_EVENTS.find(e=>e.id===id);
+  if(!ev||!ev.choice) return;
+  if(choice==='pass'){
+    if(G.cash<ev.choice.cost){toast('Can\'t afford it!','bad');return;}
+    G.cash-=ev.choice.cost;
+    if(ev.passEffect) ev.passEffect();
+    toast(ev.choice.pass,'good');
+    logEvent(ev.choice.pass,'green');
+  } else {
+    if(ev.failEffect) ev.failEffect();
+    toast(ev.choice.fail,'bad');
+    logEvent(ev.choice.fail,'red');
+  }
+  dismissEvent(id);updateHUD();
+}
+
+function dismissEvent(id){
+  activeEvents=activeEvents.filter(e=>e.id!==id);
+  const card=document.getElementById('event-'+id);
+  if(card) card.remove();
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  QUEUE UI
+// ═══════════════════════════════════════════════════════════════
+function updateQueue(){
+  const el=document.getElementById('queue-list');
+  if(!el) return;
+  if(G.queue.length===0){
+    el.innerHTML='<div style="color:var(--text3);font-size:12px;">Queue empty...</div>';
+  } else {
+    el.innerHTML=G.queue.map((c,i)=>{
+      const pct=Math.max(0,Math.min(100,(c.patience/c.maxPatience)*100));
+      return `<div class="queue-item">
+        <div class="queue-avatar">${c.avatar}</div>
+        <div class="queue-info">
+          <div class="queue-name">${c.name}${c.isVIP?' 👑':c.isAngry?' 😤':''}</div>
+          <div class="queue-patience">
+            <div class="bar-track" style="height:4px;margin-top:3px;">
+              <div class="bar-fill bar-patience${pct<30?' low':''}" style="width:${pct}%"></div>
+            </div>
+          </div>
+        </div>
+        <div class="queue-pos">#${i+1}</div>
+      </div>`;
+    }).join('');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  HUD UPDATE
+// ═══════════════════════════════════════════════════════════════
+function updateHUD(){
+  document.getElementById('hud-cash').textContent='$'+Math.floor(G.cash);
+  document.getElementById('hud-day').textContent=G.day;
+  document.getElementById('hud-rep').textContent=G.rep;
+  document.getElementById('hud-level').textContent=G.level;
+  document.getElementById('hud-prestige').textContent='✦'+G.prestige;
+  document.getElementById('hud-streak').textContent=G.combo+'🔥';
+  document.getElementById('xp-level').textContent=G.level;
+  const needed=xpForLevel(G.level);
+  document.getElementById('xp-text').textContent=`${G.xp} / ${needed} XP`;
+  document.getElementById('xp-bar').style.width=(Math.min(100,G.xp/needed*100))+'%';
+
+  // Repayment
+  if(G.debt>0) document.getElementById('hud-cash').title=`Debt: $${G.debt}`;
+
+  // Update career stats
+  const csl=document.getElementById('career-stats-list');
+  if(csl) csl.innerHTML=`
+    <div class="report-row"><span>Total Earned</span><span class="report-val">$${G.totalEarned.toFixed(0)}</span></div>
+    <div class="report-row"><span>Total Served</span><span class="report-val">${G.totalServed}</span></div>
+    <div class="report-row"><span>Total Walked</span><span class="report-val">${G.totalWalked}</span></div>
+    <div class="report-row"><span>Total Tips</span><span class="report-val">$${G.totalTips.toFixed(0)}</span></div>
+    <div class="report-row"><span>Perfect Cuts</span><span class="report-val">${G.totalPerfects}</span></div>
+    <div class="report-row"><span>Peak Combo</span><span class="report-val">${G.peakCombo}x</span></div>
+    <div class="report-row"><span>Reputation</span><span class="report-val">${G.rep}</span></div>
+    <div class="report-row"><span>Level</span><span class="report-val">${G.level}</span></div>
+    <div class="report-row"><span>Prestige</span><span class="report-val">✦${G.prestige}</span></div>
+    <div class="report-row"><span>Days Survived</span><span class="report-val">${G.totalDays}</span></div>
+    <div class="report-row"><span>Skills Unlocked</span><span class="report-val">${G.unlockedSkills.length}/${SKILLS_DATA.length}</span></div>
+    <div class="report-row"><span>Staff Count</span><span class="report-val">${G.staff.length}</span></div>
+    ${G.debt?`<div class="report-row"><span>Debt</span><span class="report-val" style="color:var(--red)">$${G.debt}</span></div>`:''}
+  `;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  END DAY
+// ═══════════════════════════════════════════════════════════════
+function endDay(){
+  clearTimers();
+  G.shopOpen=false;
+
+  // Pay debt
+  if(G.debt>0){
+    if(G.cash>=G.debt){G.cash-=G.debt;logEvent(`Debt of $${G.debt} repaid.`,'green');G.debt=0;}
+    else{G.rep=Math.max(0,G.rep-50);logEvent(`Couldn't repay $${G.debt} debt! -50 rep.`,'red');}
+  }
+
+  // Staff daily wages
+  G.staff.forEach(s=>{
+    const wage=s.type==='receptionist'?30:s.type==='senior'?60:25;
+    G.cash-=wage;
+    if(G.cash<0) G.cash=0;
+  });
+
+  G.totalDays++;
+
+  const perfect=G.todayWalked===0&&G.todayServed>0;
+  let bonus=0;
+  if(perfect){bonus=50;G.rep+=20;logEvent('Perfect day! +$50 bonus, +20 rep.','green');}
+
+  // Check game over
+  if(G.cash<-200){
+    showGameOver(`You're deep in the red. The landlord padlocked your shop. Better luck next time.`);
+    return;
+  }
+
+  // Day report
+  G.day++;
+
+  // Reset staff served
+  G.staff.forEach(s=>s.servedToday=0);
+
+  // Show summary and start next day
+  const repStars=Math.min(5,Math.floor(G.rep/200));
+  logEvent(`--- Day ${G.day-1} complete. Earned $${G.todayEarned.toFixed(0)}, served ${G.todayServed}, ${G.todayWalked} walked out. ---`,'gold');
+  toast(`Day ${G.day-1} done! $${G.todayEarned.toFixed(0)} earned.`,'gold');
+
+  // Reset daily
+  G.todayEarned=0;G.todayServed=0;G.todayWalked=0;G.todayTips=0;G.todayPerfects=0;
+  G.gameTime=540;
+  document.getElementById('stat-served').textContent='0';
+  document.getElementById('stat-walked').textContent='0';
+  document.getElementById('stat-tips').textContent='$0';
+  document.getElementById('stat-perfects').textContent='0';
+
+  checkAchievements();
+
+  // Reopen
+  setTimeout(()=>{
+    G.shopOpen=true;
+    startSpawnTimer();
+    startGameClock();
+    updateHUD();
+    logEvent(`Day ${G.day} — Fresh start!`,'blue');
+    toast(`Day ${G.day} — Open for business!`,'good');
+  },1000);
+}
+
+function showGameOver(msg){
+  document.getElementById('screen-game').style.display='none';
+  document.getElementById('screen-gameover').style.display='flex';
+  document.getElementById('gameover-msg').textContent=msg;
+  document.getElementById('gameover-stats').innerHTML=`
+    <div class="report-row"><span>Days Survived</span><span class="report-val">${G.totalDays}</span></div>
+    <div class="report-row"><span>Total Earned</span><span class="report-val">$${G.totalEarned.toFixed(0)}</span></div>
+    <div class="report-row"><span>Customers Served</span><span class="report-val">${G.totalServed}</span></div>
+    <div class="report-row"><span>Perfect Cuts</span><span class="report-val">${G.totalPerfects}</span></div>
+    <div class="report-row"><span>Peak Combo</span><span class="report-val">${G.peakCombo}x</span></div>
+    <div class="report-row"><span>Final Rep</span><span class="report-val">${G.rep}</span></div>
+    <div class="report-row"><span>Level Reached</span><span class="report-val">${G.level}</span></div>
+  `;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  PRESTIGE
+// ═══════════════════════════════════════════════════════════════
+function prestigeCheck(){
+  if(G.totalEarned<5000&&G.level<8){
+    toast('Earn $5k or reach Level 8 to prestige.','bad');
+    cancelPrestige();
+    restartGame();
+    return;
+  }
+  showPrestigeScreen();
+}
+
+function showPrestigeScreen(){
+  document.getElementById('screen-gameover').style.display='none';
+  document.getElementById('screen-prestige').style.display='flex';
+
+  const nextPrestige=G.prestige+1;
+  const perks=[
+    {icon:'💰',title:'Cash Head Start',desc:`Start with $${500*nextPrestige} cash on next run.`},
+    {icon:'💲',title:'Price Mastery',desc:`All prices +${10*nextPrestige}% permanently.`},
+    {icon:'📚',title:'Experience Boost',desc:`Gain ${25*nextPrestige}% more XP permanently.`},
+    {icon:'⭐',title:'Reputation Aura',desc:`Gain ${20*nextPrestige}% more reputation permanently.`},
+    {icon:'🪑',title:'Queue Expansion',desc:`Start with ${nextPrestige} extra queue slots.`},
+  ];
+
+  document.getElementById('prestige-perks-wrap').innerHTML=`
+    <p style="color:var(--text2);font-size:13px;margin-bottom:16px;">
+      You're about to do Prestige ✦${nextPrestige}. All progress resets except career stats and achievements.
+      You'll permanently gain ALL of these:
+    </p>`+
+    perks.map(p=>`<div class="prestige-perk">
+      <div class="pp-icon">${p.icon}</div>
+      <div class="pp-info"><h4>${p.title}</h4><p>${p.desc}</p></div>
+    </div>`).join('');
+}
+
+function doPrestige(){
+  G.prestige++;
+  G.prestigePerks=['cash_bonus','price_bonus','xp_bonus','rep_bonus','queue_bonus'];
+  document.getElementById('screen-prestige').style.display='none';
+  restartGame();
+  toast(`✦ Prestige ${G.prestige} achieved! All bonuses applied.`,'special');
+}
+
+function cancelPrestige(){
+  document.getElementById('screen-prestige').style.display='none';
+  restartGame();
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  TAB SWITCHING
+// ═══════════════════════════════════════════════════════════════
+function switchLeftTab(tab,el){
+  document.querySelectorAll('#left-panel .tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('tab-queue').classList.add('hidden');
+  document.getElementById('tab-skills').classList.add('hidden');
+  document.getElementById('tab-staff').classList.add('hidden');
+  document.getElementById('tab-'+tab).classList.remove('hidden');
+  if(tab==='skills') buildSkillTree();
+  if(tab==='staff') updateStaff();
+}
+
+function switchRightTab(tab,el){
+  document.querySelectorAll('#right-panel .tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('tab-shop').classList.add('hidden');
+  document.getElementById('tab-ach').classList.add('hidden');
+  document.getElementById('tab-stats').classList.add('hidden');
+  document.getElementById('tab-market').classList.add('hidden');
+  document.getElementById('tab-'+tab).classList.remove('hidden');
+  if(tab==='shop') buildUpgradeList();
+  if(tab==='ach') buildAchievements();
+  if(tab==='market') buildMarket();
+  if(tab==='stats') updateHUD();
+}
+
+function switchToActive(){
+  // Reset tabs
+  document.querySelectorAll('#left-panel .tab')[0].click();
+  document.querySelectorAll('#right-panel .tab')[0].click();
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  EVENT LOG
+// ═══════════════════════════════════════════════════════════════
+function logEvent(msg,color){
+  const el=document.getElementById('event-log');
+  if(!el) return;
+  const h=Math.floor(G.gameTime/60)%24;
+  const m=G.gameTime%60;
+  const time=`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+  const colorClass=color?'log-'+color:'';
+  const div=document.createElement('div');
+  div.className='log-entry';
+  div.innerHTML=`<span class="log-time">${time}</span><span class="${colorClass}">${msg}</span>`;
+  el.appendChild(div);
+  el.scrollTop=el.scrollHeight;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  TOAST
+// ═══════════════════════════════════════════════════════════════
+function toast(msg,type='good'){
+  const c=document.getElementById('toast-container');
+  const d=document.createElement('div');
+  d.className='toast '+type;
+  d.textContent=msg;
+  c.appendChild(d);
+  setTimeout(()=>d.remove(),3000);
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  BOOT
+// ═══════════════════════════════════════════════════════════════
+document.getElementById('barber-name-input').addEventListener('keydown',e=>{
+  if(e.key==='Enter') startGame();
+});
+</script>
+</body>
+</html>
